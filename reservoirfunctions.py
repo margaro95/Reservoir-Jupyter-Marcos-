@@ -1,4 +1,4 @@
-#!/usr/bin/env neural2
+
 # -*- coding: utf-8 -*-
 """
 Created on Fri Sep 22 11:54:04 2017
@@ -101,13 +101,13 @@ def test(nw):
     nw.u = nw.data[:, nw.trainLen]
     for t in range(nw.testLen):
         nw.x = (1 - nw.a) * nw.x + nw.a * \
-                                        np.tanh(
+                                        (np.sin(
                                                 np.dot(nw.Win,
                                                        np.vstack((1, nw.u[np.newaxis].T))) +
-                                                np.dot(nw.W, nw.x)
-                                                )
+                                                np.dot(nw.W, nw.x) + 2.1
+                                                ))**2
         nw.y = np.dot(nw.Wout, np.vstack((1, nw.u[np.newaxis].T, nw.x)))
-        nw.Y[:, t] = nw.y
+        nw.Y[:, t] = nw.y  # Esto es lo que vale, la predicción
         if nw.mode == 'generative':
             # Generative mode:
             nw.u = nw.y

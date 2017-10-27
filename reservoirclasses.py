@@ -1,4 +1,3 @@
-#!/usr/bin/env neural2
 # -*- coding: utf-8 -*-
 """
 Created on Fri Sep 22 11:54:04 2017
@@ -13,7 +12,7 @@ import numpy as np
 
 class Network(object):
 
-    def __init__(self, trainLen=1000, testLen=1680-1000-10, initLen=10):
+    def __init__(self, trainLen=1680-40, testLen=40, initLen=0):
         self.initLen = initLen
         self.trainLen = trainLen
         self.testLen = testLen
@@ -26,7 +25,7 @@ class Network(object):
         # self.resSize = 1000 #Reservoir size (generation)
         self.a = 0.3  # Leak rate alpha
         self.spectral_radius = 1.25  # Spectral raidus
-        self.input_scaling = 1.  # Input scaling
+        self.input_scaling = 0.1  # Input scaling
         self.reg = 1e-8  # None #Regularization factor - if None,
         # we'd use pseudo-inverse rather than ridge regression
 
