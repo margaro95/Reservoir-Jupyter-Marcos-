@@ -15,6 +15,20 @@ from scipy import linalg, io
 # from IPython.display import *
 
 
+def crossdata(archivo, pacient_test, segmentos=40):
+    data = np.roll(archivo, (41 - pacient_test) * segmentos, axis=1)
+    return data
+
+
+def crossvalidate(pacientes=41):
+    from reservoirclasses import Network
+    #  Va a contar cuántos segmentos han sido predichos como sanos
+    estimation = [np.max(np.abs(compute_network(Network(i)).Y)) for i in range(pacientes)]
+    predictions = [np.count_nonzero(compute_network(Network(i)).Y > 0) for i in
+                   range(pacientes)]
+    return predictions
+
+
 def readdata(archivo):
     data = io.loadmat(archivo)
     return data
@@ -42,6 +56,7 @@ def plot_figure(segment, patient, nw):
               '{0}th segment of data from {1}th patient'.format(segment,
                                                                 patient)
               )
+    plt.show()
 
 
 def initialization(nw):
@@ -52,7 +67,7 @@ def initialization(nw):
     # Allocated memory for the design (collected states) matrix
     nw.X = np.zeros((1 + nw.inSize + nw.resSize, nw.trainLen - nw.initLen))
     # Set the corresponding target matrix directly
-    nw.Ytarget = nw.target[:, nw.initLen+1:nw.trainLen+1]
+    nw.Ytarget = nw.target[:, nw.initLen:nw.trainLen]
     # Run the reservoir with the data and collect X
     nw.x = np.zeros((nw.resSize, 1))
     return(nw)
@@ -69,12 +84,12 @@ def compute_spectral_radius(nw):
 def learning_phase(nw):
     for t in range(nw.trainLen):
         # Input data
-        nw.u = nw.data[:, t]
-        nw.x = (1-nw.a)*nw.x + nw.a*(np.sin(np.dot(nw.Win, np.vstack((1, nw.u[np.newaxis].T))
-                                                   ) + 2.1 + np.dot(nw.W, nw.x)))**2
+        nw.u = nw.data[:, t][np.newaxis].T
+        nw.x = (1-nw.a)*nw.x + nw.a*np.sin(np.dot(nw.Win, np.vstack((1, nw.u)))
+                                           + np.dot(nw.W, nw.x) + 2.1)**2
         # After the initialization, we start modifying X
         if t >= nw.initLen:
-            nw.X[:, t-nw.initLen] = np.vstack((1, nw.u[np.newaxis].T, nw.x))[:, 0]
+            nw.X[:, t-nw.initLen] = np.vstack((1, nw.u, nw.x))[:, 0]
     return(nw)
 
 
@@ -97,31 +112,19 @@ def train_output(nw):
 def test(nw):
     # Run the trained ESN in a generative mode. no need to initialize here,
     # because x is initialized with training data and we continue from there.
-    nw.Y = np.zeros((nw.outSize, nw.testLen))
-    nw.u = nw.data[:, nw.trainLen]
+    nw.Y = np.zeros((nw.outSize, nw.testLen))[np.newaxis].T
     for t in range(nw.testLen):
-        nw.x = (1 - nw.a) * nw.x + nw.a * \
-                                        (np.sin(
-                                                np.dot(nw.Win,
-                                                       np.vstack((1, nw.u[np.newaxis].T))) +
-                                                np.dot(nw.W, nw.x) + 2.1
-                                                ))**2
-        nw.y = np.dot(nw.Wout, np.vstack((1, nw.u[np.newaxis].T, nw.x)))
-        nw.Y[:, t] = nw.y  # Esto es lo que vale, la predicción
-        if nw.mode == 'generative':
-            # Generative mode:
-            nw.u = nw.y
-        elif nw.mode == 'prediction':
-            # Predictive mode:
-            nw.u = nw.data[nw.trainLen + t + 1]
-        else:
-            raise(Exception, "ERROR: 'mode' was not set correctly.")
+        nw.u = nw.data[:, nw.trainLen + t][np.newaxis].T
+        nw.x = (1 - nw.a) * nw.x + nw.a * np.sin(
+            np.dot(nw.Win, np.vstack((1, nw.u))) + 2.1 + np.dot(nw.W, nw.x))**2
+
+        nw.Y[t] = np.dot(nw.Wout, np.vstack((1, nw.u, nw.x)))
     return(nw)
 
 
 def compute_error(nw):
     # Computing MSE for the first errorLen iterations
-    errorLen = 500
+    errorLen = 1680-40
     mse = sum(np.square(nw.data[nw.trainLen + 1:nw.trainLen + errorLen + 1] -
               nw.Y[0, 0:errorLen])) / errorLen
     print('MSE = ' + str(mse))
@@ -134,5 +137,5 @@ def compute_network(nw):
     nw = learning_phase(nw)
     nw = train_output(nw)
     nw = test(nw)
-    nw = compute_error(nw)
+    # nw = compute_error(nw)
     return(nw)
