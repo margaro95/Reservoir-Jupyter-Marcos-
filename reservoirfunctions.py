@@ -11,8 +11,6 @@ reservorio, entrenarlo y testearlo.
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy import linalg, io
-# from ipywidgets import *
-# from IPython.display import *
 
 
 def crossdata(archivo, pacient_test, segmentos=40):
@@ -20,14 +18,53 @@ def crossdata(archivo, pacient_test, segmentos=40):
     return data
 
 
-def crossvalidate(pacientes=41):
+def crossvalidate(pacientes=42):
     from reservoirclasses import Network
     #  Va a contar cuántos segmentos han sido predichos como sanos
-    estimation = [np.max(np.abs(compute_network(Network(i)).Y)) for i in range(pacientes)]
-    predictions = [np.count_nonzero(compute_network(Network(i)).Y > 0) for i in
-                   range(pacientes)]
-    return predictions
+    predictions = np.array([compute_network(Network(i)).Y for i in range(pacientes)])
+    healthycomb = np.array([np.dot(np.array([[1, -1, -1]]), predictions[i, :, :, 0].T) for i in range(pacientes)])
+    epilepticomb = np.array([np.dot(np.array([[-1, 1, -1]]), predictions[i, :, :, 0].T) for i in range(pacientes)])
+    epilepticomb2 = np.array([np.dot(np.array([[-1, -1, 1]]), predictions[i, :, :, 0].T) for i in range(pacientes)])
+    return predictions, healthycomb, epilepticomb, epilepticomb2
 
+
+def confusion_matrix(healthycomb, epilepticomb, epilepticomb2, threshold=0.8):
+    healthycount = np.array([np.count_nonzero(healthycomb[i, 0, :] > threshold) for i in range(42)])
+    epilepticount = np.array([np.count_nonzero(epilepticomb[i, 0, :] > threshold) for i in range(42)])
+    epilepticount2 = np.array([np.count_nonzero(epilepticomb2[i, 0, :] > threshold) for i in range(42)])
+    confusion_arr = np.array([[np.count_nonzero(healthycount[0:13] >= 20), np.count_nonzero(healthycount[14:27] >= 20), np.count_nonzero(healthycount[28:42] >= 20)],
+                             [[np.count_nonzero(epilepticount[0:13] >= 20), np.count_nonzero(epilepticount[14:27] >= 20), np.count_nonzero(epilepticount[28:42] >= 20)]],
+                             [[np.count_nonzero(epilepticount2[0:13] >= 20), np.count_nonzero(epilepticount2[14:27] >= 20), np.count_nonzero(epilepticount2[28:42] >= 20)]]]
+                             )
+    norm_conf = []
+    for i in confusion_arr:
+        a = 0
+        tmp_arr = []
+        a = sum(i, 0)
+        for j in i:
+            tmp_arr.append(float(j)/float(a))
+        norm_conf.append(tmp_arr)
+
+    fig = plt.figure()
+    plt.clf()
+    ax = fig.add_subplot(111)
+    ax.set_aspect(1)
+    res = ax.imshow(np.array(norm_conf), cmap=plt.cm.jet,
+                    interpolation='nearest')
+
+    width, height = confusion_arr.shape
+
+    for x in xrange(width):
+        for y in xrange(height):
+            ax.annotate(str(conf_arr[x][y]), xy=(y, x),
+                        horizontalalignment='center',
+                        verticalalignment='center')
+
+    cb = fig.colorbar(res)
+    alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+    plt.xticks(range(width), alphabet[:width])
+    plt.yticks(range(height), alphabet[:height])
+    plt.show()
 
 def readdata(archivo):
     data = io.loadmat(archivo)
@@ -35,28 +72,17 @@ def readdata(archivo):
 
 
 def set_seed(seed=None):
-    """Making the seed (for random values) variable if None"""
+    """La Seed cambia si se especifica None"""
     if seed is None:
         from time import time
         seed = int((time() * 10 ** 6) % 4294967295)
-        print("Seed set to {}".format(seed))
+        print("Seed puesta a {}".format(seed))
     try:
         np.random.seed(seed)
-        print("Seed used for random values:", seed)
+        print("Seed usada:", seed)
     except TypeError:
-        print("!!! WARNING !!!: Seed was not set correctly.")
+        print("Seed no puesta correctamente")
     return seed
-
-
-def plot_figure(segment, patient, nw):
-    plt.figure(0).clear()
-    plt.plot(nw.data[:, int((segment - 1) + 40 * (patient - 1))])
-    plt.ylim([-0.1, 1.1])
-    plt.title(
-              '{0}th segment of data from {1}th patient'.format(segment,
-                                                                patient)
-              )
-    plt.show()
 
 
 def initialization(nw):
@@ -74,20 +100,17 @@ def initialization(nw):
 
 
 def compute_spectral_radius(nw):
-    print('Computing spectral radius...', end=" ")
+
     rhoW = max(abs(linalg.eig(nw.W)[0]))
-    print('Done.')
     nw.W *= nw.spectral_radius / rhoW
     return(nw)
 
 
 def learning_phase(nw):
     for t in range(nw.trainLen):
-        # Input data
         nw.u = nw.data[:, t][np.newaxis].T
         nw.x = (1-nw.a)*nw.x + nw.a*np.sin(np.dot(nw.Win, np.vstack((1, nw.u)))
                                            + np.dot(nw.W, nw.x) + 2.1)**2
-        # After the initialization, we start modifying X
         if t >= nw.initLen:
             nw.X[:, t-nw.initLen] = np.vstack((1, nw.u, nw.x))[:, 0]
     return(nw)
@@ -96,7 +119,7 @@ def learning_phase(nw):
 def train_output(nw):
     nw.X_T = nw.X.T
     if nw.reg is not None:
-        # Ridge regression (linear regression with regularization)
+
         nw.Wout = np.dot(
                          np.dot(nw.Ytarget, nw.X_T),
                          linalg.inv(np.dot(nw.X, nw.X_T)
@@ -104,14 +127,11 @@ def train_output(nw):
                                     )
                         )
     else:
-        # Pseudo-inverse
         nw.Wout = np.dot(nw.Ytarget, linalg.pinv(nw.X))
     return(nw)
 
 
 def test(nw):
-    # Run the trained ESN in a generative mode. no need to initialize here,
-    # because x is initialized with training data and we continue from there.
     nw.Y = np.zeros((nw.outSize, nw.testLen))[np.newaxis].T
     for t in range(nw.testLen):
         nw.u = nw.data[:, nw.trainLen + t][np.newaxis].T
@@ -122,20 +142,10 @@ def test(nw):
     return(nw)
 
 
-def compute_error(nw):
-    # Computing MSE for the first errorLen iterations
-    errorLen = 1680-40
-    mse = sum(np.square(nw.data[nw.trainLen + 1:nw.trainLen + errorLen + 1] -
-              nw.Y[0, 0:errorLen])) / errorLen
-    print('MSE = ' + str(mse))
-    return(nw)
-
-
 def compute_network(nw):
     nw = initialization(nw)
     nw = compute_spectral_radius(nw)
     nw = learning_phase(nw)
     nw = train_output(nw)
     nw = test(nw)
-    # nw = compute_error(nw)
     return(nw)
