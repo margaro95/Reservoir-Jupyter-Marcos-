@@ -28,43 +28,62 @@ def crossvalidate(pacientes=42):
     return predictions, healthycomb, epilepticomb, epilepticomb2
 
 
+def crossvalidate2(pacientes=42):
+    from reservoirclasses import Network
+    #  Va a contar cuántos segmentos han sido predichos como sanos
+    predictions = np.array([compute_network(Network(i)).Y for i in range(pacientes)])
+    healthycomb = np.array([np.dot(np.array([[1]]), predictions[i, :, :, 0].T) for i in range(pacientes)])
+    epilepticomb = np.array([np.dot(np.array([[-1]]), predictions[i, :, :, 0].T) for i in range(pacientes)])
+    return predictions, healthycomb, epilepticomb
+
+
+def confusion_matrix2(healthycomb, epilepticomb, threshold=0.8):
+    healthycount = np.array([np.count_nonzero(healthycomb[i, 0, :] > threshold) for i in range(42)])
+    epilepticount = np.array([np.count_nonzero(epilepticomb[i, 0, :] > threshold) for i in range(42)])
+    confusion_arr = np.array([[np.count_nonzero(healthycount[0:13] >= 20), np.count_nonzero(healthycount[14:41] >= 20)],
+                             [[np.count_nonzero(epilepticount[0:13] >= 20), np.count_nonzero(epilepticount[14:41] >= 20)]]]
+                             )
+    return confusion_arr
+
+
 def confusion_matrix(healthycomb, epilepticomb, epilepticomb2, threshold=0.8):
     healthycount = np.array([np.count_nonzero(healthycomb[i, 0, :] > threshold) for i in range(42)])
     epilepticount = np.array([np.count_nonzero(epilepticomb[i, 0, :] > threshold) for i in range(42)])
     epilepticount2 = np.array([np.count_nonzero(epilepticomb2[i, 0, :] > threshold) for i in range(42)])
-    confusion_arr = np.array([[np.count_nonzero(healthycount[0:13] >= 20), np.count_nonzero(healthycount[14:27] >= 20), np.count_nonzero(healthycount[28:42] >= 20)],
-                             [[np.count_nonzero(epilepticount[0:13] >= 20), np.count_nonzero(epilepticount[14:27] >= 20), np.count_nonzero(epilepticount[28:42] >= 20)]],
-                             [[np.count_nonzero(epilepticount2[0:13] >= 20), np.count_nonzero(epilepticount2[14:27] >= 20), np.count_nonzero(epilepticount2[28:42] >= 20)]]]
+    confusion_arr = np.array([[np.count_nonzero(healthycount[0:13] >= 20), np.count_nonzero(healthycount[14:27] >= 20), np.count_nonzero(healthycount[28:41] >= 20)],
+                             [[np.count_nonzero(epilepticount[0:13] >= 20), np.count_nonzero(epilepticount[14:27] >= 20), np.count_nonzero(epilepticount[28:41] >= 20)]],
+                             [[np.count_nonzero(epilepticount2[0:13] >= 20), np.count_nonzero(epilepticount2[14:27] >= 20), np.count_nonzero(epilepticount2[28:41] >= 20)]]]
                              )
-    norm_conf = []
-    for i in confusion_arr:
-        a = 0
-        tmp_arr = []
-        a = sum(i, 0)
-        for j in i:
-            tmp_arr.append(float(j)/float(a))
-        norm_conf.append(tmp_arr)
-
-    fig = plt.figure()
-    plt.clf()
-    ax = fig.add_subplot(111)
-    ax.set_aspect(1)
-    res = ax.imshow(np.array(norm_conf), cmap=plt.cm.jet,
-                    interpolation='nearest')
-
-    width, height = confusion_arr.shape
-
-    for x in xrange(width):
-        for y in xrange(height):
-            ax.annotate(str(conf_arr[x][y]), xy=(y, x),
-                        horizontalalignment='center',
-                        verticalalignment='center')
-
-    cb = fig.colorbar(res)
-    alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
-    plt.xticks(range(width), alphabet[:width])
-    plt.yticks(range(height), alphabet[:height])
-    plt.show()
+    return confusion_arr
+    # norm_conf = []
+    # for i in confusion_arr:
+        # a = 0
+        # tmp_arr = []
+        # a = sum(i, 0)
+        # for j in i:
+            # tmp_arr.append(float(j)/float(a))
+        # norm_conf.append(tmp_arr)
+#
+    # fig = plt.figure()
+    # plt.clf()
+    # ax = fig.add_subplot(111)
+    # ax.set_aspect(1)
+    # res = ax.imshow(np.array(norm_conf), cmap=plt.cm.jet,
+                    # interpolation='nearest')
+#
+    # width, height = confusion_arr.shape
+#
+    # for x in xrange(width):
+        # for y in xrange(height):
+            # ax.annotate(str(confusion_arr[x][y]), xy=(y, x),
+                        # horizontalalignment='center',
+                        # verticalalignment='center')
+#
+    # cb = fig.colorbar(res)
+    # alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+    # plt.xticks(range(width), alphabet[:width])
+    # plt.yticks(range(height), alphabet[:height])
+    # plt.show()
 
 def readdata(archivo):
     data = io.loadmat(archivo)
