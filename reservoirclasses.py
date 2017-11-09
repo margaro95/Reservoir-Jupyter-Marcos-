@@ -6,7 +6,7 @@ Se define la clase Network, que tiene todas las propiedades del reservorio.
 
 @author: marcos
 """
-from reservoirfunctions import set_seed, readdata, crossdata
+from reservoirfunctions import*
 import numpy as np
 
 
@@ -18,14 +18,18 @@ class Network(object):
         self.initLen = initLen
         self.trainLen = trainLen
         self.testLen = testLen
-        self.data = crossdata(readdata(archivo)['inputs'], pacient_test)
-        self.target = crossdata(np.matrix.transpose(readdata(archivo)['targets'])[0, :][np.newaxis], pacient_test)  # crossdata(np.matrix.transpose(readdata(archivo)['targets'])[:, :], pacient_test)
+        self.data = crossdata(readdata(archivo)['inputs'][:, 14*40:], pacient_test)  # Usar con crossvalidation3
+        # crossdata(readdata(archivo)['inputs'], pacient_test)  # Usar con crossvalidation() y crossvalidation2()
+        self.target = crossdata3(np.matrix.transpose(readdata(archivo)['targets'])[1, 14*40:][np.newaxis], pacient_test)  # Caso de crossvalidation3()
+        # crossdata(np.matrix.transpose(readdata(archivo)['targets'])[0, :][np.newaxis], pacient_test)  # Caso de crossvalidation2()
+        # crossdata(np.matrix.transpose(readdata(archivo)['targets'])[:, :], pacient_test)  # Caso de crossvalidation()
+
         self.inSize = np.size(self.data, axis=0)
         self.outSize = 1  # Será uno para clasificación en dos y tres para tres
-        self.resSize = 350  # Reservoir size (prediction)
+        self.resSize = 500  # Reservoir size (prediction)
         # self.resSize = 1000 #Reservoir size (generation)
         self.a = 0.3  # Leak rate alpha
-        self.spectral_radius = 1.25  # Spectral raidus
+        self.spectral_radius = 1  # 1.25  # Spectral raidus
         self.input_scaling = 0.1  # Input scaling
         self.reg = None  # 1e-8  # None #Regularization factor - if None,
         # we'd use pseudo-inverse rather than ridge regression

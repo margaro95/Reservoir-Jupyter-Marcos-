@@ -18,7 +18,16 @@ def crossdata(archivo, pacient_test, segmentos=40):
     return data
 
 
+def crossdata3(archivo, pacient_test, segmentos=40):
+    data = np.roll(archivo, (41 - 14 - pacient_test) * segmentos, axis=1)
+    return data
+
+
 def crossvalidate(pacientes=42):
+    """
+    Esta función se dedica a hacer la cross validación de los pacientes para la
+    clasificación en tres clases.
+    """
     from reservoirclasses import Network
     #  Va a contar cuántos segmentos han sido predichos como sanos
     predictions = np.array([compute_network(Network(i)).Y for i in range(pacientes)])
@@ -29,6 +38,10 @@ def crossvalidate(pacientes=42):
 
 
 def crossvalidate2(pacientes=42):
+    """
+    Esta función se dedica a hacer la cross validación de los pacientes para la
+    clasificación en dos clases, sanos o epilepticos.
+    """
     from reservoirclasses import Network
     #  Va a contar cuántos segmentos han sido predichos como sanos
     predictions = np.array([compute_network(Network(i)).Y for i in range(pacientes)])
@@ -37,22 +50,28 @@ def crossvalidate2(pacientes=42):
     return predictions, healthycomb, epilepticomb
 
 
-def confusion_matrix2(healthycomb, epilepticomb, threshold=0.8):
-    healthycount = np.array([np.count_nonzero(healthycomb[i, 0, :] > threshold) for i in range(42)])
-    epilepticount = np.array([np.count_nonzero(epilepticomb[i, 0, :] > threshold) for i in range(42)])
-    confusion_arr = np.array([[np.count_nonzero(healthycount[0:13] >= 20), np.count_nonzero(healthycount[14:41] >= 20)],
-                             [[np.count_nonzero(epilepticount[0:13] >= 20), np.count_nonzero(epilepticount[14:41] >= 20)]]]
-                             )
-    return confusion_arr
+def crossvalidate3(pacientes=42-14):
+    """
+    Esta función se dedica a hacer la cross validación de los pacientes para la
+    clasificación en dos clases, epilepticos focalizados o generales.
+    Para hacer uso de esta función se debe haber creado el reservorio mediante
+    Network(trainLen=1680-40-40*14) para quitar las muestras de los sanos.
+    """
+    from reservoirclasses import Network
+    #  Va a contar cuántos segmentos han sido predichos como sanos
+    predictions = np.array([compute_network(Network(i, trainLen=1680-40-40*14)).Y for i in range(pacientes)])
+    generalizedcomb = np.array([np.dot(np.array([[1]]), predictions[i, :, :, 0].T) for i in range(pacientes)])
+    focalizedcomb = np.array([np.dot(np.array([[-1]]), predictions[i, :, :, 0].T) for i in range(pacientes)])
+    return predictions, generalizedcomb, focalizedcomb
 
 
 def confusion_matrix(healthycomb, epilepticomb, epilepticomb2, threshold=0.8):
     healthycount = np.array([np.count_nonzero(healthycomb[i, 0, :] > threshold) for i in range(42)])
     epilepticount = np.array([np.count_nonzero(epilepticomb[i, 0, :] > threshold) for i in range(42)])
     epilepticount2 = np.array([np.count_nonzero(epilepticomb2[i, 0, :] > threshold) for i in range(42)])
-    confusion_arr = np.array([[np.count_nonzero(healthycount[0:13] >= 20), np.count_nonzero(healthycount[14:27] >= 20), np.count_nonzero(healthycount[28:41] >= 20)],
-                             [[np.count_nonzero(epilepticount[0:13] >= 20), np.count_nonzero(epilepticount[14:27] >= 20), np.count_nonzero(epilepticount[28:41] >= 20)]],
-                             [[np.count_nonzero(epilepticount2[0:13] >= 20), np.count_nonzero(epilepticount2[14:27] >= 20), np.count_nonzero(epilepticount2[28:41] >= 20)]]]
+    confusion_arr = np.array([[np.count_nonzero(healthycount[0:14] >= 20), np.count_nonzero(epilepticount[0:14] > 20), np.count_nonzero(epilepticount2[0:14] > 20)],
+                             [[np.count_nonzero(healthycount[14:28] > 20), np.count_nonzero(epilepticount[14:28] >= 20), np.count_nonzero(epilepticount2[14:28] > 20)]],
+                             [[np.count_nonzero(healthycount[28:42] > 20), np.count_nonzero(epilepticount[28:42] > 20), np.count_nonzero(epilepticount2[28:42] >= 20)]]]
                              )
     return confusion_arr
     # norm_conf = []
@@ -84,6 +103,25 @@ def confusion_matrix(healthycomb, epilepticomb, epilepticomb2, threshold=0.8):
     # plt.xticks(range(width), alphabet[:width])
     # plt.yticks(range(height), alphabet[:height])
     # plt.show()
+
+
+def confusion_matrix2(healthycomb, epilepticomb, threshold=0.8):
+    healthycount = np.array([np.count_nonzero(healthycomb[i, 0, :] > threshold) for i in range(42)])
+    epilepticount = np.array([np.count_nonzero(epilepticomb[i, 0, :] > threshold) for i in range(42)])
+    confusion_arr = np.array([[np.count_nonzero(healthycount[0:14] >= 20), np.count_nonzero(epilepticount[0:14] > 20)],
+                             [[np.count_nonzero(healthycount[14:42] > 20), np.count_nonzero(epilepticount[14:42] >= 20)]]]
+                             )
+    return confusion_arr
+
+
+def confusion_matrix3(generalizedcomb, focalizedcomb, threshold=0.8):
+    generalizedcount = np.array([np.count_nonzero(generalizedcomb[i, 0, :] > threshold) for i in range(42 - 14)])
+    focalizedcount = np.array([np.count_nonzero(focalizedcomb[i, 0, :] > threshold) for i in range(42 - 14)])
+    confusion_arr = np.array([[np.count_nonzero(generalizedcount[0:14] >= 20), np.count_nonzero(focalizedcount[0:14] > 20)],
+                             [[np.count_nonzero(generalizedcount[14:28] > 20), np.count_nonzero(focalizedcount[14:28] >= 20)]]]
+                             )
+    return confusion_arr
+
 
 def readdata(archivo):
     data = io.loadmat(archivo)
