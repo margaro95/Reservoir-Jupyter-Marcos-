@@ -11,6 +11,8 @@ reservorio, entrenarlo y testearlo.
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy import linalg, io
+from sklearn import linear_model
+archivo = "data.mat"
 
 
 def crossdata(archivo, pacient_test, segmentos=40):
@@ -23,102 +25,125 @@ def crossdata3(archivo, pacient_test, segmentos=40):
     return data
 
 
-def crossvalidate(pacientes=42):
+def crossvalidate(regularization, pacientes=42):
     """
     Esta función se dedica a hacer la cross validación de los pacientes para la
     clasificación en tres clases.
     """
     from reservoirclasses import Network
+    #  regularization = None  # 1e-8 # "logistic"
     #  Va a contar cuántos segmentos han sido predichos como sanos
-    predictions = np.array([compute_network(Network(i)).Y for i in range(pacientes)])
-    healthycomb = np.array([np.dot(np.array([[1, -1, -1]]), predictions[i, :, :, 0].T) for i in range(pacientes)])
-    epilepticomb = np.array([np.dot(np.array([[-1, 1, -1]]), predictions[i, :, :, 0].T) for i in range(pacientes)])
-    epilepticomb2 = np.array([np.dot(np.array([[-1, -1, 1]]), predictions[i, :, :, 0].T) for i in range(pacientes)])
-    return predictions, healthycomb, epilepticomb, epilepticomb2
+    predictions = np.array([compute_network(Network(i, outSize=3, target=crossdata(np.matrix.transpose(readdata(archivo)['targets'])[:, :], i), reg=regularization, data=crossdata(readdata(archivo)['inputs'], i))).Y for i in range(pacientes)])
+    if predictions[0].shape == (40,):
+        healthycomb = np.array([np.dot(np.array([[1]]), predictions[i, :].T[np.newaxis]) for i in range(pacientes)])
+        epilepticomb = np.array([np.dot(np.array([[-1]]), predictions[i, :].T[np.newaxis]) for i in range(pacientes)])
+        return predictions, healthycomb, epilepticomb, regularization
+    try:
+        healthycomb = np.array([np.dot(np.array([[1, -1, -1]]), predictions[i, :, :, 0].T) for i in range(pacientes)])
+        epilepticomb = np.array([np.dot(np.array([[-1, 1, -1]]), predictions[i, :, :, 0].T) for i in range(pacientes)])
+        epilepticomb2 = np.array([np.dot(np.array([[-1, -1, 1]]), predictions[i, :, :, 0].T) for i in range(pacientes)])
+    except:
+        healthycomb = np.array([np.dot(np.array([[1, -1, -1]]), predictions[i, :, :].T) for i in range(pacientes)])
+        epilepticomb = np.array([np.dot(np.array([[-1, 1, -1]]), predictions[i, :, :].T) for i in range(pacientes)])
+        epilepticomb2 = np.array([np.dot(np.array([[-1, -1, 1]]), predictions[i, :, :].T) for i in range(pacientes)])
+    return predictions, healthycomb, epilepticomb, epilepticomb2, regularization
 
 
-def crossvalidate2(pacientes=42):
+def crossvalidate2(regularization, pacientes=42):
     """
     Esta función se dedica a hacer la cross validación de los pacientes para la
     clasificación en dos clases, sanos o epilepticos.
     """
     from reservoirclasses import Network
+    #  regularization = "logistic"  # None # 1e-8
     #  Va a contar cuántos segmentos han sido predichos como sanos
-    predictions = np.array([compute_network(Network(i)).Y for i in range(pacientes)])
-    healthycomb = np.array([np.dot(np.array([[1]]), predictions[i, :, :, 0].T) for i in range(pacientes)])
-    epilepticomb = np.array([np.dot(np.array([[-1]]), predictions[i, :, :, 0].T) for i in range(pacientes)])
-    return predictions, healthycomb, epilepticomb
+    predictions = np.array([compute_network(Network(i, outSize=1, target=crossdata(np.matrix.transpose(readdata(archivo)['targets'])[0, :][np.newaxis], i), reg=regularization, data=crossdata(readdata(archivo)['inputs'], i))).Y for i in range(pacientes)])
+    if predictions[0].shape == (40,):
+        healthycomb = np.array([np.dot(np.array([[1]]), predictions[i, :].T[np.newaxis]) for i in range(pacientes)])
+        epilepticomb = np.array([np.dot(np.array([[-1]]), predictions[i, :].T[np.newaxis]) for i in range(pacientes)])
+        return predictions, healthycomb, epilepticomb, regularization
+    try:
+        healthycomb = np.array([np.dot(np.array([[1]]), predictions[i, :, :, 0].T) for i in range(pacientes)])
+        epilepticomb = np.array([np.dot(np.array([[-1]]), predictions[i, :, :, 0].T) for i in range(pacientes)])
+    except:
+        healthycomb = np.array([np.dot(np.array([[1]]), predictions[i, :].T) for i in range(pacientes)])
+        epilepticomb = np.array([np.dot(np.array([[-1]]), predictions[i, :].T) for i in range(pacientes)])
+    return predictions, healthycomb, epilepticomb, regularization
 
 
-def crossvalidate3(pacientes=42-14):
+def crossvalidate3(regularization, pacientes=42-14):
     """
     Esta función se dedica a hacer la cross validación de los pacientes para la
     clasificación en dos clases, epilepticos focalizados o generales.
     Para hacer uso de esta función se debe haber creado el reservorio mediante
-    Network(trainLen=1680-40-40*14) para quitar las muestras de los sanos.
+    Network2(trainLen=1680-40-40*14) para quitar las muestras de los sanos.
     """
     from reservoirclasses import Network
+    #  regularization = None  # 1e-8 # "logistic"
     #  Va a contar cuántos segmentos han sido predichos como sanos
-    predictions = np.array([compute_network(Network(i, trainLen=1680-40-40*14)).Y for i in range(pacientes)])
-    generalizedcomb = np.array([np.dot(np.array([[1]]), predictions[i, :, :, 0].T) for i in range(pacientes)])
-    focalizedcomb = np.array([np.dot(np.array([[-1]]), predictions[i, :, :, 0].T) for i in range(pacientes)])
-    return predictions, generalizedcomb, focalizedcomb
+    predictions = np.array([compute_network(Network(i, outSize=1, target=crossdata3(np.matrix.transpose(readdata(archivo)['targets'])[1, 14*40:][np.newaxis], i), trainLen=1680-40-40*14, reg=regularization, data=crossdata(readdata(archivo)['inputs'][:, 14*40:], i))).Y for i in range(pacientes)])
+    if predictions[0].shape == (40,):
+        healthycomb = np.array([np.dot(np.array([[1]]), predictions[i, :].T[np.newaxis]) for i in range(pacientes)])
+        epilepticomb = np.array([np.dot(np.array([[-1]]), predictions[i, :].T[np.newaxis]) for i in range(pacientes)])
+        return predictions, generalizedcomb, focalizedcomb, regularization
+    try:
+        generalizedcomb = np.array([np.dot(np.array([[1]]), predictions[i, :, :, 0].T) for i in range(pacientes)])
+        focalizedcomb = np.array([np.dot(np.array([[-1]]), predictions[i, :, :, 0].T) for i in range(pacientes)])
+    except:
+        generalizedcomb = np.array([np.dot(np.array([[1]]), predictions[i, :].T) for i in range(pacientes)])
+        focalizedcomb = np.array([np.dot(np.array([[-1]]), predictions[i, :].T) for i in range(pacientes)])
+    return predictions, generalizedcomb, focalizedcomb, regularization
 
 
-def confusion_matrix(healthycomb, epilepticomb, epilepticomb2, threshold=0.8):
+def confusion_matrix(healthycomb, epilepticomb, epilepticomb2, regularization, threshold=0.8):
+    if regularization == "logistic":
+        # TODO ESTO ESTA MAAAAAAAL
+        healthycount = np.array([np.count_nonzero(healthycomb[i, 0, :] == [1, -1, -1]) for i in range(42)])
+        epilepticount = np.array([np.count_nonzero(epilepticomb[i, 0, :] == [-1, 1, -1]) for i in range(42)])
+        epilepticount2 = np.array([np.count_nonzero(epilepticomb2[i, 0, :] == [-1, -1, 1]) for i in range(42)])
+        confusion_arr = np.array([[np.count_nonzero((healthycount[0:14] >= 10)&(healthycount[0:14]>epilepticount[0:14])&(healthycount[0:14]>epilepticount2[0:14])), np.count_nonzero((epilepticount[0:14] > 10)&(healthycount[0:14]<epilepticount[0:14])&(epilepticount[0:14]>epilepticount2[0:14])), np.count_nonzero((epilepticount2[0:14] > 10)&(epilepticount2[0:14]>epilepticount[0:14])&(healthycount[0:14]<epilepticount2[0:14]))],
+                                 [[np.count_nonzero((healthycount[14:28] > 10)&(healthycount[14:28]>epilepticount[14:28])&(healthycount[14:28]>epilepticount2[14:28])), np.count_nonzero((epilepticount[14:28] >= 10)&(healthycount[14:28]<epilepticount[14:28])&(epilepticount[14:28]>epilepticount2[14:28])), np.count_nonzero((epilepticount2[14:28] > 10)&(epilepticount2[14:28]>epilepticount[14:28])&(healthycount[14:28]<epilepticount2[14:28]))]],
+                                 [[np.count_nonzero((healthycount[28:42] > 10)&(healthycount[28:42]>epilepticount[28:42])&(healthycount[28:42]>epilepticount2[28:42])), np.count_nonzero((epilepticount[28:42] > 10)&(healthycount[28:42]<epilepticount[28:42])&(epilepticount[28:42]>epilepticount2[28:42])), np.count_nonzero((epilepticount2[28:42] >= 10)&(epilepticount2[28:42]>epilepticount[28:42])&(healthycount[28:42]<epilepticount2[28:42]))]]]
+                                 )
+        return confusion_arr
     healthycount = np.array([np.count_nonzero(healthycomb[i, 0, :] > threshold) for i in range(42)])
     epilepticount = np.array([np.count_nonzero(epilepticomb[i, 0, :] > threshold) for i in range(42)])
     epilepticount2 = np.array([np.count_nonzero(epilepticomb2[i, 0, :] > threshold) for i in range(42)])
-    confusion_arr = np.array([[np.count_nonzero(healthycount[0:14] >= 20), np.count_nonzero(epilepticount[0:14] > 20), np.count_nonzero(epilepticount2[0:14] > 20)],
-                             [[np.count_nonzero(healthycount[14:28] > 20), np.count_nonzero(epilepticount[14:28] >= 20), np.count_nonzero(epilepticount2[14:28] > 20)]],
-                             [[np.count_nonzero(healthycount[28:42] > 20), np.count_nonzero(epilepticount[28:42] > 20), np.count_nonzero(epilepticount2[28:42] >= 20)]]]
+    confusion_arr = np.array([[np.count_nonzero((healthycount[0:14] >= 10)&(healthycount[0:14]>epilepticount[0:14])&(healthycount[0:14]>epilepticount2[0:14])), np.count_nonzero((epilepticount[0:14] > 10)&(healthycount[0:14]<epilepticount[0:14])&(epilepticount[0:14]>epilepticount2[0:14])), np.count_nonzero((epilepticount2[0:14] > 10)&(epilepticount2[0:14]>epilepticount[0:14])&(healthycount[0:14]<epilepticount2[0:14]))],
+                             [[np.count_nonzero((healthycount[14:28] > 10)&(healthycount[14:28]>epilepticount[14:28])&(healthycount[14:28]>epilepticount2[14:28])), np.count_nonzero((epilepticount[14:28] >= 10)&(healthycount[14:28]<epilepticount[14:28])&(epilepticount[14:28]>epilepticount2[14:28])), np.count_nonzero((epilepticount2[14:28] > 10)&(epilepticount2[14:28]>epilepticount[14:28])&(healthycount[14:28]<epilepticount2[14:28]))]],
+                             [[np.count_nonzero((healthycount[28:42] > 10)&(healthycount[28:42]>epilepticount[28:42])&(healthycount[28:42]>epilepticount2[28:42])), np.count_nonzero((epilepticount[28:42] > 10)&(healthycount[28:42]<epilepticount[28:42])&(epilepticount[28:42]>epilepticount2[28:42])), np.count_nonzero((epilepticount2[28:42] >= 10)&(epilepticount2[28:42]>epilepticount[28:42])&(healthycount[28:42]<epilepticount2[28:42]))]]]
                              )
     return confusion_arr
-    # norm_conf = []
-    # for i in confusion_arr:
-        # a = 0
-        # tmp_arr = []
-        # a = sum(i, 0)
-        # for j in i:
-            # tmp_arr.append(float(j)/float(a))
-        # norm_conf.append(tmp_arr)
-#
-    # fig = plt.figure()
-    # plt.clf()
-    # ax = fig.add_subplot(111)
-    # ax.set_aspect(1)
-    # res = ax.imshow(np.array(norm_conf), cmap=plt.cm.jet,
-                    # interpolation='nearest')
-#
-    # width, height = confusion_arr.shape
-#
-    # for x in xrange(width):
-        # for y in xrange(height):
-            # ax.annotate(str(confusion_arr[x][y]), xy=(y, x),
-                        # horizontalalignment='center',
-                        # verticalalignment='center')
-#
-    # cb = fig.colorbar(res)
-    # alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
-    # plt.xticks(range(width), alphabet[:width])
-    # plt.yticks(range(height), alphabet[:height])
-    # plt.show()
 
 
-def confusion_matrix2(healthycomb, epilepticomb, threshold=0.8):
+def confusion_matrix2(healthycomb, epilepticomb, regularization, threshold=0.8):
+    if regularization == "logistic":
+        healthycount = np.array([np.count_nonzero(healthycomb[i, 0, :] == 1) for i in range(42)])
+        epilepticount = np.array([np.count_nonzero(epilepticomb[i, 0, :] == 1) for i in range(42)])
+        confusion_arr = np.array([[np.count_nonzero((healthycount[0:14] >= 10)&(healthycount[0:14]>epilepticount[0:14])), np.count_nonzero((epilepticount[0:14] > 10)&(healthycount[0:14]<epilepticount[0:14]))],
+                                 [[np.count_nonzero((healthycount[14:42] > 10)&(healthycount[14:42]>epilepticount[14:42])), np.count_nonzero((epilepticount[14:42] >= 10)&(healthycount[14:42]<epilepticount[14:42]))]]]
+                                 )
+        return confusion_arr
     healthycount = np.array([np.count_nonzero(healthycomb[i, 0, :] > threshold) for i in range(42)])
     epilepticount = np.array([np.count_nonzero(epilepticomb[i, 0, :] > threshold) for i in range(42)])
-    confusion_arr = np.array([[np.count_nonzero(healthycount[0:14] >= 20), np.count_nonzero(epilepticount[0:14] > 20)],
-                             [[np.count_nonzero(healthycount[14:42] > 20), np.count_nonzero(epilepticount[14:42] >= 20)]]]
+    confusion_arr = np.array([[np.count_nonzero((healthycount[0:14] >= 10)&(healthycount[0:14]>epilepticount[0:14])), np.count_nonzero((epilepticount[0:14] > 10)&(healthycount[0:14]<epilepticount[0:14]))],
+                             [[np.count_nonzero((healthycount[14:42] > 10)&(healthycount[14:42]>epilepticount[14:42])), np.count_nonzero((epilepticount[14:42] >= 10)&(healthycount[14:42]<epilepticount[14:42]))]]]
                              )
     return confusion_arr
 
 
-def confusion_matrix3(generalizedcomb, focalizedcomb, threshold=0.8):
+def confusion_matrix3(generalizedcomb, focalizedcomb, regularization, threshold=0.8):
+    if regularization == "logistic":
+        generalizedcount = np.array([np.count_nonzero(generalizedcomb[i, 0, :] == 1) for i in range(42 - 14)])
+        focalizedcount = np.array([np.count_nonzero(focalizedcomb[i, 0, :] == 1) for i in range(42 - 14)])
+        confusion_arr = np.array([[np.count_nonzero((generalizedcount[0:14] >= 10)&(generalizedcount[0:14]>focalizedcount[0:14])), np.count_nonzero((focalizedcount[0:14] > 10)&(generalized[0:14]<focalizedcount[0:14]))],
+                                 [[np.count_nonzero((generalizedcount[14:28] > 10)&(generalizedcount[14:28]>focalizedcount[14:28])), np.count_nonzero((focalizedcount[14:28] >= 10)&(generalizedcount[14:28]<focalizedcount[14:28]))]]]
+                                 )
+        return confusion_arr
     generalizedcount = np.array([np.count_nonzero(generalizedcomb[i, 0, :] > threshold) for i in range(42 - 14)])
     focalizedcount = np.array([np.count_nonzero(focalizedcomb[i, 0, :] > threshold) for i in range(42 - 14)])
-    confusion_arr = np.array([[np.count_nonzero(generalizedcount[0:14] >= 20), np.count_nonzero(focalizedcount[0:14] > 20)],
-                             [[np.count_nonzero(generalizedcount[14:28] > 20), np.count_nonzero(focalizedcount[14:28] >= 20)]]]
+    confusion_arr = np.array([[np.count_nonzero((generalizedcount[0:14] >= 10)&(generalizedcount[0:14]>focalizedcount[0:14])), np.count_nonzero((focalizedcount[0:14] > 10)&(generalized[0:14]<focalizedcount[0:14]))],
+                             [[np.count_nonzero((generalizedcount[14:28] > 10)&(generalizedcount[14:28]>focalizedcount[14:28])), np.count_nonzero((focalizedcount[14:28] >= 10)&(generalizedcount[14:28]<focalizedcount[14:28]))]]]
                              )
     return confusion_arr
 
@@ -166,8 +191,11 @@ def compute_spectral_radius(nw):
 def learning_phase(nw):
     for t in range(nw.trainLen):
         nw.u = nw.data[:, t][np.newaxis].T
+        # WATCH OUT!!!!!! IF YOU WANT TO USE LEAK RATE, YOU MUST USE THE NEXT
+        # LINE WITH np.dot(nw.W, nw.x)
         nw.x = (1-nw.a)*nw.x + nw.a*np.sin(np.dot(nw.Win, np.vstack((1, nw.u)))
-                                           + np.dot(nw.W, nw.x) + 2.1)**2
+                                           # + np.dot(nw.W, nw.x) + 2.1)**2
+                                           + 2.1)**2
         if t >= nw.initLen:
             nw.X[:, t-nw.initLen] = np.vstack((1, nw.u, nw.x))[:, 0]
     return(nw)
@@ -175,14 +203,18 @@ def learning_phase(nw):
 
 def train_output(nw):
     nw.X_T = nw.X.T
-    if nw.reg is not None:
-
+    if (nw.reg is not None) & (nw.reg != "logistic"):
         nw.Wout = np.dot(
                          np.dot(nw.Ytarget, nw.X_T),
                          linalg.inv(np.dot(nw.X, nw.X_T)
                                     + nw.reg*np.eye(1 + nw.inSize + nw.resSize)
                                     )
-                        )
+                         )
+    elif nw.reg == "logistic":
+        model = linear_model.LogisticRegression()
+        nw.Wout = model.fit(nw.X_T, nw.Ytarget.T)
+        # np.dot(np.log(((nw.Ytarget+1)/2)/(1 - ((nw.Ytarget+1)/2))), nw.X_T)
+
     else:
         nw.Wout = np.dot(nw.Ytarget, linalg.pinv(nw.X))
     return(nw)
@@ -190,12 +222,19 @@ def train_output(nw):
 
 def test(nw):
     nw.Y = np.zeros((nw.outSize, nw.testLen))[np.newaxis].T
+    nw.U = np.zeros((1 + np.size(nw.data, 0) + nw.resSize, nw.testLen))
     for t in range(nw.testLen):
         nw.u = nw.data[:, nw.trainLen + t][np.newaxis].T
+        # WATCH OUT!!!!!! IF YOU WANT TO USE LEAK RATE, YOU MUST USE THE NEXT
+        # LINE WITH np.dot(nw.W, nw.x)
         nw.x = (1 - nw.a) * nw.x + nw.a * np.sin(
-            np.dot(nw.Win, np.vstack((1, nw.u))) + 2.1 + np.dot(nw.W, nw.x))**2
-
-        nw.Y[t] = np.dot(nw.Wout, np.vstack((1, nw.u, nw.x)))
+            np.dot(nw.Win, np.vstack((1, nw.u))) + 2.1)**2
+                                                    # + np.dot(nw.W, nw.x))**2
+        if nw.reg != "logistic":
+            nw.Y[t] = np.dot(nw.Wout, np.vstack((1, nw.u, nw.x)))
+        nw.U[:, t] = np.vstack((1, nw.u, nw.x))[:, 0]
+    if nw.reg == "logistic":
+        nw.Y = nw.Wout.predict(nw.U.T)
     return(nw)
 
 
