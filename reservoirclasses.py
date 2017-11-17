@@ -24,7 +24,10 @@ class Network(object):
         self.data = data
         # crossdata(readdata(archivo)['inputs'], pacient_test)  # Usar con crossvalidation() y crossvalidation2()
         # crossdata(readdata(archivo)['inputs'][:, 14*40:], pacient_test)  # Usar con crossvalidation3
-        self.target = target
+        if (reg == "logistic") & (outSize == 3):
+            self.target = crossdata(np.array(([1]*14*40 + [2]*14*40 + [3]*14*40))[np.newaxis], pacient_test)
+        else:
+            self.target = target
         # crossdata(np.matrix.transpose(readdata(archivo)['targets'])[0, :][np.newaxis], pacient_test)  # Caso de crossvalidation2()
         # crossdata(np.matrix.transpose(readdata(archivo)['targets'])[:, :], pacient_test)  # Caso de crossvalidation()
         # crossdata3(np.matrix.transpose(readdata(archivo)['targets'])[1, 14*40:][np.newaxis], pacient_test)  # Caso de crossvalidation3()
