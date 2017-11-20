@@ -25,7 +25,7 @@ def crossdata3(archivo, pacient_test, segmentos=40):
     return data
 
 
-def crossvalidate(regularization, pacientes=42):
+def crossvalidate(regularization, tolerancia=1e-4, iscalin=0.1, phase=2.1, pacientes=42):
     """
     Esta función se dedica a hacer la cross validación de los pacientes para la
     clasificación en tres clases.
@@ -33,10 +33,12 @@ def crossvalidate(regularization, pacientes=42):
     from reservoirclasses import Network
     #  regularization = None  # 1e-8 # "logistic"
     #  Va a contar cuántos segmentos han sido predichos como sanos
-    predictions = np.array([compute_network(Network(i, outSize=3, target=crossdata(np.matrix.transpose(readdata(archivo)['targets'])[:, :], i), reg=regularization, data=crossdata(readdata(archivo)['inputs'], i)), regularization).Y for i in range(pacientes)])
+    predictions = np.array([compute_network(Network(i, outSize=3, target=crossdata(np.matrix.transpose(readdata(archivo)['targets'])[:, :], i), reg=regularization, data=crossdata(readdata(archivo)['inputs'], i)), regularization, tolerancia, iscaling=iscaling, phase=phase).Y for i in range(pacientes)])
+    #  Este if se queda con todo el estudio de la regresión logística
     if predictions[0].shape == (3,):
         healthycomb = epilepticomb = epilepticomb2 = np.array([predictions[i, :].T[np.newaxis] for i in range(pacientes)])
         return predictions, healthycomb, epilepticomb, epilepticomb2, regularization
+    #  Este try se queda con el estudio de pinv y ridge regression y el except con la logística
     try:
         healthycomb = np.array([np.dot(np.array([[1, -1, -1]]), predictions[i, :, :, 0].T) for i in range(pacientes)])
         epilepticomb = np.array([np.dot(np.array([[-1, 1, -1]]), predictions[i, :, :, 0].T) for i in range(pacientes)])
@@ -48,7 +50,7 @@ def crossvalidate(regularization, pacientes=42):
     return predictions, healthycomb, epilepticomb, epilepticomb2, regularization
 
 
-def crossvalidate2(regularization, pacientes=42):
+def crossvalidate2(regularization,tolerancia=1e-4, iscalin=0.1, phase=2.1, pacientes=42):
     """
     Esta función se dedica a hacer la cross validación de los pacientes para la
     clasificación en dos clases, sanos o epilepticos.
@@ -56,11 +58,13 @@ def crossvalidate2(regularization, pacientes=42):
     from reservoirclasses import Network
     #  regularization = "logistic"  # None # 1e-8
     #  Va a contar cuántos segmentos han sido predichos como sanos
-    predictions = np.array([compute_network(Network(i, outSize=1, target=crossdata(np.matrix.transpose(readdata(archivo)['targets'])[0, :][np.newaxis], i), reg=regularization, data=crossdata(readdata(archivo)['inputs'], i)),regularization).Y for i in range(pacientes)])
+    predictions = np.array([compute_network(Network(i, outSize=1, target=crossdata(np.matrix.transpose(readdata(archivo)['targets'])[0, :][np.newaxis], i), reg=regularization, data=crossdata(readdata(archivo)['inputs'], i)),regularization,tolerancia, iscaling=iscaling, phase=phase).Y for i in range(pacientes)])
+    #  Este if se queda con todo el estudio de la regresión logística
     if predictions[0].shape == (2,):
         healthycomb = np.array([np.dot(np.array([[1]]), predictions[i, :].T[np.newaxis]) for i in range(pacientes)])
         epilepticomb = np.array([np.dot(np.array([[-1]]), predictions[i, :].T[np.newaxis]) for i in range(pacientes)])
         return predictions, healthycomb, epilepticomb, regularization
+    #  Este try se queda con el estudio de pinv y ridge regression y el except con la logística
     try:
         healthycomb = np.array([np.dot(np.array([[1]]), predictions[i, :, :, 0].T) for i in range(pacientes)])
         epilepticomb = np.array([np.dot(np.array([[-1]]), predictions[i, :, :, 0].T) for i in range(pacientes)])
@@ -70,7 +74,7 @@ def crossvalidate2(regularization, pacientes=42):
     return predictions, healthycomb, epilepticomb, regularization
 
 
-def crossvalidate3(regularization, pacientes=42-14):
+def crossvalidate3(regularization, tolerancia=1e-4, iscalin=0.1, phase=2.1, pacientes=42-14):
     """
     Esta función se dedica a hacer la cross validación de los pacientes para la
     clasificación en dos clases, epilepticos focalizados o generales.
@@ -80,11 +84,13 @@ def crossvalidate3(regularization, pacientes=42-14):
     from reservoirclasses import Network
     #  regularization = None  # 1e-8 # "logistic"
     #  Va a contar cuántos segmentos han sido predichos como sanos
-    predictions = np.array([compute_network(Network(i, outSize=1, target=crossdata3(np.matrix.transpose(readdata(archivo)['targets'])[1, 14*40:][np.newaxis], i), trainLen=1680-40-40*14, reg=regularization, data=crossdata(readdata(archivo)['inputs'][:, 14*40:], i)),regularization).Y for i in range(pacientes)])
+    predictions = np.array([compute_network(Network(i, outSize=1, target=crossdata3(np.matrix.transpose(readdata(archivo)['targets'])[1, 14*40:][np.newaxis], i), trainLen=1680-40-40*14, reg=regularization, data=crossdata(readdata(archivo)['inputs'][:, 14*40:], i)),regularization, tolerancia, iscaling=iscaling,phase=phase).Y for i in range(pacientes)])
+    #  Este if se queda con todo el estudio de la regresión logística
     if predictions[0].shape == (2,):
         generalizedcomb = np.array([np.dot(np.array([[1]]), predictions[i, :].T[np.newaxis]) for i in range(pacientes)])
         focalizedcomb = np.array([np.dot(np.array([[-1]]), predictions[i, :].T[np.newaxis]) for i in range(pacientes)])
         return predictions, generalizedcomb, focalizedcomb, regularization
+    #  Este try se queda con el estudio de pinv y ridge regression y el except con la logística
     try:
         generalizedcomb = np.array([np.dot(np.array([[1]]), predictions[i, :, :, 0].T) for i in range(pacientes)])
         focalizedcomb = np.array([np.dot(np.array([[-1]]), predictions[i, :, :, 0].T) for i in range(pacientes)])
@@ -204,20 +210,20 @@ def compute_spectral_radius(nw):
     return(nw)
 
 
-def learning_phase(nw):
+def learning_phase(nw, phase=2.1):
     for t in range(nw.trainLen):
         nw.u = nw.data[:, t][np.newaxis].T
         # WATCH OUT!!!!!! IF YOU WANT TO USE LEAK RATE, YOU MUST USE THE NEXT
         # LINE WITH np.dot(nw.W, nw.x)
         nw.x = (1-nw.a)*nw.x + nw.a*np.sin(np.dot(nw.Win, np.vstack((1, nw.u)))
                                            # + np.dot(nw.W, nw.x) + 2.1)**2
-                                           + 2.1)**2
+                                           + phase)**2
         if t >= nw.initLen:
             nw.X[:, t-nw.initLen] = np.vstack((1, nw.u, nw.x))[:, 0]
     return(nw)
 
 
-def train_output(nw):
+def train_output(nw, tolerancia):
     nw.X_T = nw.X.T
     if (nw.reg is not None) & (nw.reg != "logistic"):
         nw.Wout = np.dot(
@@ -227,7 +233,7 @@ def train_output(nw):
                                     )
                          )
     elif nw.reg == "logistic":
-        model = linear_model.LogisticRegression(dual=True, class_weight='balanced', tol=1e-7)
+        model = linear_model.LogisticRegression(dual=True, class_weight='balanced', tol=tolerancia)
         nw.Wout = model.fit(nw.X_T, np.ravel(nw.Ytarget.T, order='F'))
         # np.dot(np.log(((nw.Ytarget+1)/2)/(1 - ((nw.Ytarget+1)/2))), nw.X_T)
 
@@ -236,7 +242,7 @@ def train_output(nw):
     return(nw)
 
 
-def test(nw):
+def test(nw, phase = 2.1):
     nw.Y = np.zeros((nw.outSize, nw.testLen))[np.newaxis].T
     nw.U = np.zeros((1 + np.size(nw.data, 0) + nw.resSize, nw.testLen))
     for t in range(nw.testLen):
@@ -244,7 +250,7 @@ def test(nw):
         # WATCH OUT!!!!!! IF YOU WANT TO USE LEAK RATE, YOU MUST USE THE NEXT
         # LINE WITH np.dot(nw.W, nw.x)
         nw.x = (1 - nw.a) * nw.x + nw.a * np.sin(
-            np.dot(nw.Win, np.vstack((1, nw.u))) + 2.1)**2
+            np.dot(nw.Win, np.vstack((1, nw.u))) + phase)**2
                                                     # + np.dot(nw.W, nw.x))**2
         if nw.reg != "logistic":
             nw.Y[t] = np.dot(nw.Wout, np.vstack((1, nw.u, nw.x)))
@@ -257,10 +263,10 @@ def test(nw):
     return(nw)
 
 
-def compute_network(nw, regularization):
+def compute_network(nw, regularization, tolerancia, phase):
     nw = initialization(nw, regularization)
     nw = compute_spectral_radius(nw)
-    nw = learning_phase(nw)
-    nw = train_output(nw)
-    nw = test(nw)
+    nw = learning_phase(nw, phase)
+    nw = train_output(nw, tolerancia)
+    nw = test(nw, phase)
     return(nw)
