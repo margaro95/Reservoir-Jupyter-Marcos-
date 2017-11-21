@@ -25,7 +25,7 @@ def crossdata3(archivo, pacient_test, segmentos=40):
     return data
 
 
-def crossvalidate(regularization, tolerancia=1e-4, iscalin=0.1, phase=2.1, pacientes=42):
+def crossvalidate(regularization, tolerancia=1e-4, inputscalin=0.1, phase=2.1, resSize=500, pacientes=42):
     """
     Esta función se dedica a hacer la cross validación de los pacientes para la
     clasificación en tres clases.
@@ -33,7 +33,7 @@ def crossvalidate(regularization, tolerancia=1e-4, iscalin=0.1, phase=2.1, pacie
     from reservoirclasses import Network
     #  regularization = None  # 1e-8 # "logistic"
     #  Va a contar cuántos segmentos han sido predichos como sanos
-    predictions = np.array([compute_network(Network(i, outSize=3, target=crossdata(np.matrix.transpose(readdata(archivo)['targets'])[:, :], i), reg=regularization, data=crossdata(readdata(archivo)['inputs'], i)), regularization, tolerancia, iscaling=iscaling, phase=phase).Y for i in range(pacientes)])
+    predictions = np.array([compute_network(Network(i, outSize=3, target=crossdata(np.matrix.transpose(readdata(archivo)['targets'])[:, :], i), reg=regularization, data=crossdata(readdata(archivo)['inputs'], i), resSize=resSize, iscaling=inputscalin), tolerancia, phase).Y for i in range(pacientes)])
     #  Este if se queda con todo el estudio de la regresión logística
     if predictions[0].shape == (3,):
         healthycomb = epilepticomb = epilepticomb2 = np.array([predictions[i, :].T[np.newaxis] for i in range(pacientes)])
@@ -50,7 +50,7 @@ def crossvalidate(regularization, tolerancia=1e-4, iscalin=0.1, phase=2.1, pacie
     return predictions, healthycomb, epilepticomb, epilepticomb2, regularization
 
 
-def crossvalidate2(regularization,tolerancia=1e-4, iscalin=0.1, phase=2.1, pacientes=42):
+def crossvalidate2(regularization,tolerancia=1e-4, inputscalin=0.1, phase=2.1, resSize=500, pacientes=42):
     """
     Esta función se dedica a hacer la cross validación de los pacientes para la
     clasificación en dos clases, sanos o epilepticos.
@@ -58,7 +58,7 @@ def crossvalidate2(regularization,tolerancia=1e-4, iscalin=0.1, phase=2.1, pacie
     from reservoirclasses import Network
     #  regularization = "logistic"  # None # 1e-8
     #  Va a contar cuántos segmentos han sido predichos como sanos
-    predictions = np.array([compute_network(Network(i, outSize=1, target=crossdata(np.matrix.transpose(readdata(archivo)['targets'])[0, :][np.newaxis], i), reg=regularization, data=crossdata(readdata(archivo)['inputs'], i)),regularization,tolerancia, iscaling=iscaling, phase=phase).Y for i in range(pacientes)])
+    predictions = np.array([compute_network(Network(i, outSize=1, target=crossdata(np.matrix.transpose(readdata(archivo)['targets'])[0, :][np.newaxis], i), reg=regularization, data=crossdata(readdata(archivo)['inputs'], i), resSize=resSize, iscaling=inputscalin),tolerancia, phase).Y for i in range(pacientes)])
     #  Este if se queda con todo el estudio de la regresión logística
     if predictions[0].shape == (2,):
         healthycomb = np.array([np.dot(np.array([[1]]), predictions[i, :].T[np.newaxis]) for i in range(pacientes)])
@@ -74,7 +74,7 @@ def crossvalidate2(regularization,tolerancia=1e-4, iscalin=0.1, phase=2.1, pacie
     return predictions, healthycomb, epilepticomb, regularization
 
 
-def crossvalidate3(regularization, tolerancia=1e-4, iscalin=0.1, phase=2.1, pacientes=42-14):
+def crossvalidate3(regularization, tolerancia=1e-4, inputscalin=0.1, phase=2.1, resSize=500, pacientes=42-14):
     """
     Esta función se dedica a hacer la cross validación de los pacientes para la
     clasificación en dos clases, epilepticos focalizados o generales.
@@ -84,7 +84,7 @@ def crossvalidate3(regularization, tolerancia=1e-4, iscalin=0.1, phase=2.1, paci
     from reservoirclasses import Network
     #  regularization = None  # 1e-8 # "logistic"
     #  Va a contar cuántos segmentos han sido predichos como sanos
-    predictions = np.array([compute_network(Network(i, outSize=1, target=crossdata3(np.matrix.transpose(readdata(archivo)['targets'])[1, 14*40:][np.newaxis], i), trainLen=1680-40-40*14, reg=regularization, data=crossdata(readdata(archivo)['inputs'][:, 14*40:], i)),regularization, tolerancia, iscaling=iscaling,phase=phase).Y for i in range(pacientes)])
+    predictions = np.array([compute_network(Network(i, outSize=1, target=crossdata3(np.matrix.transpose(readdata(archivo)['targets'])[1, 14*40:][np.newaxis], i), trainLen=1680-40-40*14, reg=regularization, data=crossdata(readdata(archivo)['inputs'][:, 14*40:], i), resSize=resSize, iscaling=inputscalin), tolerancia, phase).Y for i in range(pacientes)])
     #  Este if se queda con todo el estudio de la regresión logística
     if predictions[0].shape == (2,):
         generalizedcomb = np.array([np.dot(np.array([[1]]), predictions[i, :].T[np.newaxis]) for i in range(pacientes)])
@@ -122,8 +122,8 @@ def confusion_matrix(healthycomb, epilepticomb, epilepticomb2, regularization, p
     comb[:,1]=np.mean(epilepticomb[:,0,:],axis=1)
     comb[:,2]=np.mean(epilepticomb2[:,0,:],axis=1)
     confusion_arr = np.array([[np.count_nonzero(comb[:14,:].argmax(axis=1)==0),np.count_nonzero(comb[:14,:].argmax(axis=1)==1),np.count_nonzero(comb[:14,:].argmax(axis=1)==2)],
-                             [[np.count_nonzero(comb[14:28,:].argmax(axis=1)==0),np.count_nonzero(comb[14:28,:].argmax(axis=1)==1),np.count_nonzero(comb[14:28,:].argmax(axis=1)==2)]],
-                             [[np.count_nonzero(comb[28:42,:].argmax(axis=1)==0),np.count_nonzero(comb[28:42,:].argmax(axis=1)==1),np.count_nonzero(comb[28:42,:].argmax(axis=1)==2)]]]
+                             [np.count_nonzero(comb[14:28,:].argmax(axis=1)==0),np.count_nonzero(comb[14:28,:].argmax(axis=1)==1),np.count_nonzero(comb[14:28,:].argmax(axis=1)==2)],
+                             [np.count_nonzero(comb[28:42,:].argmax(axis=1)==0),np.count_nonzero(comb[28:42,:].argmax(axis=1)==1),np.count_nonzero(comb[28:42,:].argmax(axis=1)==2)]]
                              )
     return confusion_arr
 
@@ -145,7 +145,7 @@ def confusion_matrix2(healthycomb, epilepticomb, regularization, predictions, th
     comb[:,0]=np.mean(healthycomb[:,0,:],axis=1)
     comb[:,1]=np.mean(epilepticomb[:,0,:],axis=1)
     confusion_arr = np.array([[np.count_nonzero(comb[:14,:].argmax(axis=1)==0),np.count_nonzero(comb[:14,:].argmax(axis=1)==1)],
-                             [[np.count_nonzero(comb[14:42,:].argmax(axis=1)==0),np.count_nonzero(comb[14:42,:].argmax(axis=1)==1)]]]
+                             [np.count_nonzero(comb[14:42,:].argmax(axis=1)==0),np.count_nonzero(comb[14:42,:].argmax(axis=1)==1)]]
                              )
     return confusion_arr
 
@@ -165,7 +165,7 @@ def confusion_matrix3(generalizedcomb, focalizedcomb, regularization, prediction
     comb[:,0]=np.mean(generalizedcomb[:,0,:],axis=1)
     comb[:,1]=np.mean(focalizedcomb[:,0,:],axis=1)
     confusion_arr = np.array([[np.count_nonzero(comb[:14,:].argmax(axis=1)==0),np.count_nonzero(comb[:14,:].argmax(axis=1)==1)],
-                             [[np.count_nonzero(comb[14:28,:].argmax(axis=1)==0),np.count_nonzero(comb[14:28,:].argmax(axis=1)==1)]]]
+                             [np.count_nonzero(comb[14:28,:].argmax(axis=1)==0),np.count_nonzero(comb[14:28,:].argmax(axis=1)==1)]]
                              )
     return confusion_arr
 
@@ -189,17 +189,17 @@ def set_seed(seed=None):
     return seed
 
 
-def initialization(nw, regularization):
+def initialization(nw):
     # Weights
-    nw.Win = (np.random.rand(nw.resSize, 1 + nw.inSize)-0.5) * nw.input_scaling
-    nw.W = np.random.rand(nw.resSize, nw.resSize)-0.5
+    nw.Win = (np.random.rand(int(nw.resSize), 1 + nw.inSize)-0.5) * nw.input_scaling
+    nw.W = np.random.rand(int(nw.resSize), int(nw.resSize))-0.5
     # Matrices
     # Allocated memory for the design (collected states) matrix
-    nw.X = np.zeros((1 + nw.inSize + nw.resSize, nw.trainLen - nw.initLen))
+    nw.X = np.zeros((1 + nw.inSize + int(nw.resSize), nw.trainLen - nw.initLen))
     # Set the corresponding target matrix directly
     nw.Ytarget = nw.target[:, nw.initLen:nw.trainLen]
     # Run the reservoir with the data and collect X
-    nw.x = np.zeros((nw.resSize, 1))
+    nw.x = np.zeros((int(nw.resSize), 1))
     return(nw)
 
 
@@ -229,7 +229,7 @@ def train_output(nw, tolerancia):
         nw.Wout = np.dot(
                          np.dot(nw.Ytarget, nw.X_T),
                          linalg.inv(np.dot(nw.X, nw.X_T)
-                                    + nw.reg*np.eye(1 + nw.inSize + nw.resSize)
+                                    + nw.reg*np.eye(1 + nw.inSize + int(nw.resSize))
                                     )
                          )
     elif nw.reg == "logistic":
@@ -244,7 +244,7 @@ def train_output(nw, tolerancia):
 
 def test(nw, phase = 2.1):
     nw.Y = np.zeros((nw.outSize, nw.testLen))[np.newaxis].T
-    nw.U = np.zeros((1 + np.size(nw.data, 0) + nw.resSize, nw.testLen))
+    nw.U = np.zeros((1 + np.size(nw.data, 0) + int(nw.resSize), nw.testLen))
     for t in range(nw.testLen):
         nw.u = nw.data[:, nw.trainLen + t][np.newaxis].T
         # WATCH OUT!!!!!! IF YOU WANT TO USE LEAK RATE, YOU MUST USE THE NEXT
@@ -263,8 +263,8 @@ def test(nw, phase = 2.1):
     return(nw)
 
 
-def compute_network(nw, regularization, tolerancia, phase):
-    nw = initialization(nw, regularization)
+def compute_network(nw, tolerancia=1e-4, phase=2.1):
+    nw = initialization(nw)
     nw = compute_spectral_radius(nw)
     nw = learning_phase(nw, phase)
     nw = train_output(nw, tolerancia)
