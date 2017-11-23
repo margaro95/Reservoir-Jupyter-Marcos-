@@ -25,12 +25,17 @@ def crossdata3(archivo, pacient_test, segmentos=40):
     return data
 
 
+iteracionnumcros = 1
+
+
 def crossvalidate(regularization, tolerancia=1e-4, inputscalin=0.1, phase=2.1, resSize=500, pacientes=42):
     """
     Esta función se dedica a hacer la cross validación de los pacientes para la
     clasificación en tres clases.
     """
     from reservoirclasses import Network
+    print("Llamada a crossvalidate numero {0}\n{1}".format(iteracionnumcros,str([regularization,inputscalin,phase,resSize])))
+    iteracionnumcros += 1
     #  regularization = None  # 1e-8 # "logistic"
     #  Va a contar cuántos segmentos han sido predichos como sanos
     predictions = np.array([compute_network(Network(i, outSize=3, target=crossdata(np.matrix.transpose(readdata(archivo)['targets'])[:, :], i), reg=regularization, data=crossdata(readdata(archivo)['inputs'], i), resSize=resSize, iscaling=inputscalin), tolerancia, phase).Y for i in range(pacientes)])
@@ -175,15 +180,21 @@ def readdata(archivo):
     return data
 
 
+iteracionum = 1
+
+
 def set_seed(seed=None):
     """La Seed cambia si se especifica None"""
+    global iteracionum
+    print("Paciente {0} e iteración {1}".format(iteracionum%42,iteracionum))
+    iteracionum += 1 
     if seed is None:
         from time import time
         seed = int((time() * 10 ** 6) % 4294967295)
-        print("Seed puesta a {}".format(seed))
+       # print("Seed puesta a {}".format(seed))
     try:
         np.random.seed(seed)
-        print("Seed usada:", seed)
+
     except TypeError:
         print("Seed no puesta correctamente")
     return seed
