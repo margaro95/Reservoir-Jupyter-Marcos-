@@ -19,18 +19,24 @@ def callbackF(Xi,f,accept):
     input("Pulsa para continuar...")
 
 
+a=np.array([1,0,0,0])
+b=np.array([0,1,0,0])
+c=np.array([0,0,1,0])
+d=np.array([0,0,0,1])
+
+
 def optimizacion():
-    xopt = scipy.optimize.basinhopping(lambda x: Optim1fun("triple", x[0], x[1], x[2], x[3]), x0=[-2e-5, -1e-5, 21e-5, 3.5e-5],
-                                       callback=callbackF, stepsize=5, take_step=rutina_pasos())
-    Jopt = Optim1fun("triple", xopt[0], xopt[1], xopt[2], xopt[3])
+    global a, b, c, d
+    xopt = scipy.optimize.minimize(lambda x: Optim1fun("triple", x[0], x[1], x[2], x[3]), x0=[1e-3, 1e-2, 0.21, 3.5], method='Powell', callback=callbackF, options={'direc':[d,b,c,a]})
+    Jopt = xopt.fun#Optim1fun("triple", xopt[0], xopt[1], xopt[2], xopt[3])
     return xopt, Jopt
 
 
-class rutina_pasos(object):
-    def __init__(self, stepsize=5):
-        self.stepsize = stepsize
-
-    def __call__(self, x):
-        s = self.stepsize
-        x += np.random.uniform(-s, s, x.shape)
-        return x
+#class rutina_pasos(object):
+#    def __init__(self, stepsize=5):
+#        # self.stepsize = stepsize
+#
+#    def __call__(self, x):
+#        s =5
+#        x += s
+#        return x

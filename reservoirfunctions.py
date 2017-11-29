@@ -12,7 +12,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy import linalg, io
 from sklearn import linear_model
-archivo = "data.mat"
+archivo = "comb.mat"
 
 
 def crossdata(archivo, pacient_test, segmentos=40):
@@ -33,6 +33,7 @@ def crossvalidate(regularization, tolerancia=1e-4, inputscalin=0.1, phase=2.1, r
     Esta función se dedica a hacer la cross validación de los pacientes para la
     clasificación en tres clases.
     """
+    global iteracionnumcros
     from reservoirclasses import Network
     print("Llamada a crossvalidate numero {0}\n{1}".format(iteracionnumcros,str([regularization,inputscalin,phase,resSize])))
     iteracionnumcros += 1
@@ -180,13 +181,13 @@ def readdata(archivo):
     return data
 
 
-iteracionum = 1
+iteracionum = 0 
 
 
 def set_seed(seed=None):
     """La Seed cambia si se especifica None"""
     global iteracionum
-    print("Paciente {0} e iteración {1}".format(iteracionum%42,iteracionum))
+    print("Paciente {0} e iteración {1}".format((iteracionum%42)+1,iteracionum))
     iteracionum += 1 
     if seed is None:
         from time import time

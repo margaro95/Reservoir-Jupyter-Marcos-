@@ -3,7 +3,7 @@ from reservoirclasses import*
 
 def Optim1fun(mode, regression, iscalin, phase, resSize, tolerancia=1e-4):
     if mode == "triple":
-        [predictions, healthycomb, epilepticomb, epilepticomb2, regularization] = crossvalidate(regularization=10**(regression*1e5), tolerancia=tolerancia, phase=0.1*phase*1e5, inputscalin=10**(iscalin*1e5), resSize=100*np.abs(resSize*1e5))
+        [predictions, healthycomb, epilepticomb, epilepticomb2, regularization] = crossvalidate(regularization=regression*10, tolerancia=tolerancia, phase=phase*10, inputscalin=iscalin*10, resSize=resSize*100)
         conf_arr = confusion_matrix(healthycomb, epilepticomb, epilepticomb2, regularization, predictions)
         J = 42 - np.trace(conf_arr)
         print("Función de coste en esta iteración{}".format(J))
